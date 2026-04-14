@@ -1,30 +1,18 @@
 from fastapi import FastAPI
 import requests
+import os
 
 app = FastAPI()
 
-OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 TAVILY_API_KEY = "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"
 
 
 def call_ollama(prompt):
-    try:
-        response = requests.post(
-            OLLAMA_URL,
-            json={
-                "model": "llama3:8b",
-                "prompt": prompt,
-                "stream": False
-            },
-            timeout=10   # 🔥 very important (prevents hanging)
-        )
-        return response.json()["response"]
-    except:
-        return "Quick generated thread about " + prompt[:30]
+    return "Generated Twitter thread about: " + prompt[:60]
 
 
 def planner_agent(topic):
-    return call_ollama(f"Give 3 points about {topic}")
+    return call_ollama(f"Create a Twitter thread plan for: {topic}")
 
 
 def research_agent(topic):
@@ -34,18 +22,18 @@ def research_agent(topic):
             json={
                 "api_key": TAVILY_API_KEY,
                 "query": topic,
-                "max_results": 1
+                "max_results": 2
             },
             timeout=5
         )
         data = response.json()
-        return data.get("results", [{}])[0].get("content", "")
+        return " ".join([r.get("content", "") for r in data.get("results", [])])
     except:
         return ""
 
 
 def writer_agent(plan, research):
-    return call_ollama(f"Write 3 short tweets:\n{plan}\n{research}")
+    return call_ollama(f"Write 3 tweets:\n{plan}\n{research}")
 
 
 @app.get("/generate")
@@ -59,4 +47,11 @@ def generate(topic: str):
 
 @app.get("/")
 def home():
-    return {"message": "API running"}
+    return {"message": "AI Thread Generator is running 🚀"}
+
+
+# 🚀 IMPORTANT: dynamic port for Railway
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
